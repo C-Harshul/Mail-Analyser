@@ -23,8 +23,7 @@ app.get('/', (req, res) => {
     endpoints: [
       '/auth/url',
       '/auth/status', 
-      '/emails',
-      '/emails/mock'
+      '/emails'
     ]
   });
 });
@@ -89,8 +88,11 @@ app.get('/auth/callback', async (req, res) => {
 
   try {
     console.log('🔑 Exchanging code for tokens...');
-    const { tokens: newTokens } = await oauth2Client.getAccessToken(code);
-    tokens = newTokens;
+    const result = await oauth2Client.getToken(code);
+    if (!result || !result.tokens) {
+      throw new Error('Token exchange failed: No tokens returned');
+    }
+    tokens = result.tokens;
     oauth2Client.setCredentials(tokens);
     gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     
@@ -156,7 +158,7 @@ app.get('/emails', async (req, res) => {
     // Get list of messages
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
-      maxResults: 50,
+      maxResults: 5,
       q: 'in:inbox'
     });
 
@@ -204,96 +206,6 @@ app.get('/emails', async (req, res) => {
   }
 });
 
-// For demo purposes, if no auth is set up, return mock data
-app.get('/emails/mock', (req, res) => {
-  console.log('🎭 Mock emails requested - returning sample data');
-  const mockEmails = [
-    {
-      id: '1',
-      from: 'vendor@acmesupplies.com',
-      subject: 'Invoice #INV-2024-001 - Office Supplies Order',
-      date: new Date(Date.now() - 86400000).toISOString(),
-      snippet: 'Please find attached invoice for your recent office supplies order. Total amount: $1,247.50',
-      body: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px;">
-          <h2>Invoice #INV-2024-001</h2>
-          <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-          <p><strong>Vendor:</strong> ACME Supplies Ltd.</p>
-          <p><strong>Customer:</strong> Your Company</p>
-          
-          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-            <tr style="background-color: #f4f4f4;">
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Qty</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Price</th>
-              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Total</th>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 8px;">Office Paper (A4, 500 sheets)</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">50</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$8.50</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$425.00</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #ddd; padding: 8px;">Printer Cartridges (HP 305XL)</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">15</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$54.83</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$822.50</td>
-            </tr>
-            <tr style="background-color: #f9f9f9; font-weight: bold;">
-              <td colspan="3" style="border: 1px solid #ddd; padding: 8px; text-align: right;">Total:</td>
-              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$1,247.50</td>
-            </tr>
-          </table>
-          
-          <p><strong>Payment Terms:</strong> Net 30 days</p>
-          <p><strong>Due Date:</strong> ${new Date(Date.now() + 30 * 86400000).toLocaleDateString()}</p>
-        </div>
-      `,
-      isHtml: true
-    },
-    {
-      id: '2',
-      from: 'billing@cloudservices.com',
-      subject: 'Monthly Statement - December 2024',
-      date: new Date(Date.now() - 172800000).toISOString(),
-      snippet: 'Your monthly cloud services statement is ready. Total charges: $890.25',
-      body: `Monthly Cloud Services Statement\n\nAccount: CS-789123\nBilling Period: December 1-31, 2024\n\nServices:\n- Database Hosting: $345.00\n- Storage (2.5TB): $125.25\n- Bandwidth: $420.00\n\nTotal: $890.25\n\nPayment due by January 15, 2025`,
-      isHtml: false
-    },
-    {
-      id: '3',
-      from: 'orders@techequipment.com',
-      subject: 'Order Confirmation #ORD-456789',
-      date: new Date(Date.now() - 259200000).toISOString(),
-      snippet: 'Thank you for your order. 2x Laptops, 1x Monitor. Total: $3,299.97',
-      body: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px;">
-          <h2>Order Confirmation</h2>
-          <p><strong>Order #:</strong> ORD-456789</p>
-          <p><strong>Date:</strong> ${new Date(Date.now() - 259200000).toLocaleDateString()}</p>
-          
-          <h3>Items Ordered:</h3>
-          <ul>
-            <li>Dell Latitude 7420 Laptop (Qty: 2) - $1,299.99 each</li>
-            <li>Samsung 27" 4K Monitor (Qty: 1) - $699.99</li>
-          </ul>
-          
-          <p><strong>Subtotal:</strong> $3,299.97</p>
-          <p><strong>Tax:</strong> $0.00</p>
-          <p><strong>Total:</strong> $3,299.97</p>
-          
-          <p><strong>Expected Delivery:</strong> 3-5 business days</p>
-        </div>
-      `,
-      isHtml: true
-    }
-  ];
-  
-  console.log(`✅ Returning ${mockEmails.length} mock emails`);
-  res.json(mockEmails);
-});
-
 app.listen(port, () => {
   console.log(`🚀 Gmail Viewer API Server running at http://localhost:${port}`);
   console.log('📋 Available endpoints:');
@@ -302,6 +214,5 @@ app.listen(port, () => {
   console.log('   GET  /auth/status   - Check auth status');
   console.log('   GET  /auth/callback - OAuth callback');
   console.log('   GET  /emails        - Get real emails (requires auth)');
-  console.log('   GET  /emails/mock   - Get mock emails');
   console.log('');
 });
