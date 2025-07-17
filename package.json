@@ -8,13 +8,22 @@
   },
   "scripts": {
     "start": "node cli-gmail.js",
-    "install-global": "npm install -g ."
+    "install-global": "npm install -g .",
+    "server": "node server.js"
   },
   "dependencies": {
+    "axios": "^1.10.0",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
     "googleapis": "^144.0.0",
-    "express": "^5.0.1"
+    "querystring": "^0.2.1"
   },
-  "keywords": ["gmail", "cli", "email", "oauth"],
+  "keywords": [
+    "gmail",
+    "cli",
+    "email",
+    "oauth"
+  ],
   "author": "Gmail CLI Viewer",
   "license": "MIT"
 }

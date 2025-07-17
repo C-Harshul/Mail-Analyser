@@ -327,11 +327,56 @@ class GmailCLI {
 
 // Run the CLI
 if (require.main === module) {
-  const cli = new GmailCLI();
-  cli.run().catch(error => {
-    console.error(`${colors.red}❌ Fatal error: ${error.message}${colors.reset}`);
-    process.exit(1);
-  });
+  const axios = require('axios');
+
+  async function mainMenu() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    console.log('\n=== Mail-Analyser CLI ===');
+    console.log('1) Gmail');
+    console.log('2) QuickBooks Purchases');
+    console.log('q) Quit');
+    rl.question('Choose an option (1, 2, or q): ', async (answer) => {
+      rl.close();
+      if (answer.trim().toLowerCase() === 'q') {
+        process.exit(0);
+      } else if (answer.trim() === '2') {
+        // QuickBooks Purchases
+        try {
+          const res = await axios.get('http://localhost:4000/api/purchases');
+          console.log('\n=== QuickBooks Purchases ===');
+          if (res.data && res.data.QueryResponse && res.data.QueryResponse.Purchase) {
+            res.data.QueryResponse.Purchase.forEach((purchase, idx) => {
+              console.log(`\nPurchase #${idx + 1}:`);
+              console.log(JSON.stringify(purchase, null, 2));
+            });
+          } else {
+            console.log('No purchases found or invalid response.');
+          }
+        } catch (err) {
+          if (err.response && err.response.status === 401) {
+            console.log('\nYou need to authenticate with QuickBooks first.');
+            console.log('Please open http://localhost:4000/auth/quickbooks in your browser and complete the authentication.');
+          } else {
+            console.log('Error fetching purchases:', err.message);
+          }
+        }
+        mainMenu();
+      } else if (answer.trim() === '1') {
+        // Gmail (default)
+        const cli = new GmailCLI();
+        await cli.run();
+        mainMenu();
+      } else {
+        console.log('Invalid option. Please choose 1, 2, or q.');
+        mainMenu();
+      }
+    });
+  }
+
+  mainMenu();
 }
 
 module.exports = GmailCLI;
