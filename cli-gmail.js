@@ -328,6 +328,7 @@ class GmailCLI {
 // Run the CLI
 if (require.main === module) {
   const axios = require('axios');
+  const readline = require('readline');
 
   async function mainMenu() {
     const rl = readline.createInterface({
@@ -336,41 +337,82 @@ if (require.main === module) {
     });
     console.log('\n=== Mail-Analyser CLI ===');
     console.log('1) Gmail');
-    console.log('2) QuickBooks Purchases');
+    console.log('2) QuickBooks Entity Sample');
+    console.log('3) Extract & Create QuickBooks Purchase from Latest Email');
     console.log('q) Quit');
-    rl.question('Choose an option (1, 2, or q): ', async (answer) => {
+    rl.question('Choose an option (1, 2, 3, or q): ', async (answer) => {
       rl.close();
       if (answer.trim().toLowerCase() === 'q') {
         process.exit(0);
-      } else if (answer.trim() === '2') {
-        // QuickBooks Purchases
+      } else if (answer.trim() === '3') {
+        // Extract QuickBooks Purchase from latest email and create in QuickBooks
+        console.log('\n🚀 Starting QuickBooks Purchase extraction and creation workflow...');
+        console.log('📋 This will:');
+        console.log('   1. Extract purchase data from your latest email using Gemini');
+        console.log('   2. Send the extracted data as a POST request to QuickBooks');
+        console.log('   3. Show detailed logs of the entire process');
+        console.log('');
+        
         try {
-          const res = await axios.get('http://localhost:4000/api/purchases');
-          console.log('\n=== QuickBooks Purchases ===');
-          if (res.data && res.data.QueryResponse && res.data.QueryResponse.Purchase) {
-            res.data.QueryResponse.Purchase.forEach((purchase, idx) => {
-              console.log(`\nPurchase #${idx + 1}:`);
-              console.log(JSON.stringify(purchase, null, 2));
-            });
-          } else {
-            console.log('No purchases found or invalid response.');
-          }
+          const res = await axios.get('http://localhost:4000/api/extract-and-create-purchase');
+          console.log('\n🎉 Workflow completed successfully!');
+          console.log('📊 Summary:');
+          console.log(`   - Email extraction time: ${res.data.performance?.extractionTime || 'N/A'}`);
+          console.log(`   - QuickBooks creation time: ${res.data.performance?.creationTime || 'N/A'}`);
+          console.log(`   - Total workflow time: ${res.data.performance?.totalTime || 'N/A'}`);
+          console.log(`   - Purchase created with ID: ${res.data.createdPurchase?.Purchase?.Id || 'N/A'}`);
         } catch (err) {
           if (err.response && err.response.status === 401) {
-            console.log('\nYou need to authenticate with QuickBooks first.');
-            console.log('Please open http://localhost:4000/auth/quickbooks in your browser and complete the authentication.');
+            console.log('\n❌ Authentication Error:');
+            console.log('You need to authenticate with QuickBooks and/or Gmail first.');
+            console.log('For QuickBooks: open http://localhost:4000/auth/quickbooks in your browser and complete the authentication.');
+            console.log('For Gmail: run the Gmail CLI authentication flow.');
+          } else if (err.response && err.response.status === 404) {
+            console.log('\n❌ Data Not Found:');
+            console.log('No purchase data in QuickBooks or no emails in Gmail.');
+            console.log('Add a Purchase in QuickBooks and/or send an email to your Gmail inbox, then try again.');
           } else {
-            console.log('Error fetching purchases:', err.message);
+            console.log('\n❌ Error in workflow:');
+            console.log('Error details:', err.response?.data || err.message);
+            if (err.response?.data?.details) {
+              console.log('QuickBooks API response:', JSON.stringify(err.response.data.details, null, 2));
+            }
           }
         }
         mainMenu();
+      } else if (answer.trim() === '2') {
+        // Prompt for entity name for sample fetch
+        const rlEntity = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+        rlEntity.question('Enter the QuickBooks entity to fetch (e.g., Purchase, Bill, Expense): ', async (entity) => {
+          rlEntity.close();
+          if (!entity || !entity.trim()) {
+            console.log('No entity provided. Returning to menu.');
+            return mainMenu();
+          }
+          try {
+            const res = await axios.get(`http://localhost:4000/api/sample/${encodeURIComponent(entity.trim())}`);
+            console.log(`\n=== QuickBooks ${entity.trim()} Sample ===`);
+            console.log(JSON.stringify(res.data, null, 2));
+          } catch (err) {
+            if (err.response && err.response.status === 401) {
+              console.log('\nYou need to authenticate with QuickBooks first.');
+              console.log('Please open http://localhost:4000/auth/quickbooks in your browser and complete the authentication.');
+            } else {
+              console.log('Error fetching entity sample:', err.response?.data || err.message);
+            }
+          }
+          mainMenu();
+        });
       } else if (answer.trim() === '1') {
         // Gmail (default)
         const cli = new GmailCLI();
         await cli.run();
         mainMenu();
       } else {
-        console.log('Invalid option. Please choose 1, 2, or q.');
+        console.log('Invalid option. Please choose 1, 2, 3, or q.');
         mainMenu();
       }
     });
