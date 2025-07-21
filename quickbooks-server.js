@@ -70,7 +70,7 @@ app.get('/api/sample/:entity', async (req, res) => {
     return res.status(400).send('No entity provided.');
   }
   try {
-    const query = `SELECT * FROM ${entity} MAXRESULTS 15`;
+    const query = `SELECT * FROM ${entity}`;
     const qbRes = await axios.get(
       `https://sandbox-quickbooks.api.intuit.com/v3/company/${COMPANY_ID}/query`,
       {
