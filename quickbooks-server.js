@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // Environment variables
 const CLIENT_ID = process.env.QB_CLIENT_ID;
@@ -90,10 +90,19 @@ app.get('/api/sample/:entity', async (req, res) => {
 // Endpoint to extract structured QuickBooks purchase data from the latest email
 app.get('/api/extract-purchase-from-email', async (req, res) => {
   try {
-    console.log('Step 1: Fetching QuickBooks Purchase data...');
-    const qbRes = await axios.get('http://localhost:4000/api/sample/Purchase');
-    const quickbooks_data = qbRes.data;
-    console.log('Step 1: QuickBooks data fetched:', JSON.stringify(quickbooks_data, null, 2));
+    console.log('Step 1a: Fetching ONE QuickBooks Purchase for schema reference...');
+    const qbRes = await axios.get('http://localhost:4000/api/sample/Purchase?limit=1');
+    // If the API doesn't support ?limit=1, fallback to extracting the first element
+    let quickbooks_purchase_data = qbRes.data;
+    if (Array.isArray(quickbooks_purchase_data.Purchase)) {
+      quickbooks_purchase_data = quickbooks_purchase_data.Purchase[0] || quickbooks_purchase_data.Purchase;
+    }
+    console.log('Step 1a: One QuickBooks Purchase data fetched.');
+
+    console.log('Step 1b: Fetching ALL QuickBooks Vendors...');
+    const vendorRes = await axios.get('http://localhost:4000/api/sample/Vendor');
+    const quickbooks_vendor_data = vendorRes.data;
+    console.log('Step 1b: All QuickBooks Vendors fetched.');
 
     // 2. Fetch latest Gmail email body (replace with real endpoint if available)
     let gmailData;
@@ -101,15 +110,36 @@ app.get('/api/extract-purchase-from-email', async (req, res) => {
       console.log('Step 2: Fetching latest Gmail email...');
       const gmailRes = await axios.get('http://localhost:4000/api/gmail/latest');
       gmailData = gmailRes.data.body;
-      console.log('Step 2: Gmail data fetched:', gmailData);
+      console.log('Step 2: Gmail data fetched.');
     } catch (e) {
       console.log('Step 2: Failed to fetch Gmail data, using sample. Error:', e.message);
       gmailData = 'Sample email content: Vendor: Acme Corp, Amount: $123.45, Date: 2024-07-01, Paid via Credit Card.';
     }
 
     // 3. Compose the prompt
-    console.log('Step 3: Composing prompt...');
-    const prompt = `You are a system that extracts structured QuickBooks purchase data from emails using existing QuickBooks entries as reference.\n\nBelow is:\n\n1. A list of real QuickBooks Purchase objects (quickbooks_data). This data defines the structure, field names, nesting, and values used in the system (like VendorRef, AccountRef, Line, etc.). Use this to learn the expected schema.\n\n2. An email (email_content) containing the details for a new purchase (e.g., vendor, amount, items, payment info).\n\nYour task:\n- Read the email.\n- Use the structure and fields from the quickbooks_data to create a new Purchase entry.\n- Match vendors, accounts, and fields from the reference data.\n- Do NOT assume a fixed format — infer everything from the QuickBooks data.\n- Output only a single valid JSON object for the new purchase.\n\nquickbooks_data:\n${JSON.stringify(quickbooks_data, null, 2)}\n\nemail_content:\n${gmailData}`;
+    console.log('Step 3: Composing prompt with ONE Purchase (for format) and ALL Vendors (for matching)...');
+    const prompt = `You are an intelligent system that extracts structured QuickBooks purchase data from emails. Use the provided QuickBooks data as reference for schema and vendor matching.
+
+Below is:
+1.  A single real QuickBooks Purchase object ('quickbooks_purchase_data'). This is ONLY for understanding the expected schema, field names, and nesting for a Purchase.
+2.  A list of ALL existing QuickBooks Vendor objects ('quickbooks_vendor_data'). Use this list to find the correct 'Id' and 'DisplayName' for the vendor mentioned in the email. This is the most important context for matching.
+3.  An email ('email_content') containing the details for a new purchase (e.g., vendor, amount, items, payment info).
+
+Your task:
+-   Read the 'email_content'.
+-   From the 'quickbooks_vendor_data', find the vendor that best matches the vendor in the email. Use this vendor's 'Id' and 'DisplayName' for the 'EntityRef.value' and 'EntityRef.name' fields in the new Purchase object.
+-   Use the structure and fields from the 'quickbooks_purchase_data' ONLY as a schema reference to create a new, valid Purchase JSON object.
+-   Accurately map other details from the email (like amount, date, line items) to the appropriate fields in the Purchase schema.
+-   Output ONLY a single valid JSON object for the new purchase, with no extra text or explanations.
+
+quickbooks_purchase_data:
+${JSON.stringify(quickbooks_purchase_data, null, 2)}
+
+quickbooks_vendor_data:
+${JSON.stringify(quickbooks_vendor_data, null, 2)}
+
+email_content:
+${gmailData}`;
     console.log('Step 3: Prompt composed.');
 
     // 4. Send to Gemini
