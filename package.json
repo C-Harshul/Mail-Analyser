@@ -29,5 +29,8 @@
     "oauth"
   ],
   "author": "Gmail CLI Viewer",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
 }
