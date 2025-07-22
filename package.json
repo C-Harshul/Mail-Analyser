@@ -9,7 +9,9 @@
   "scripts": {
     "start": "node cli-gmail.js",
     "install-global": "npm install -g .",
-    "server": "node server.js"
+    "server": "node quickbooks-server.js",
+    "heroku-postbuild": "echo 'Build completed'",
+    "web": "node quickbooks-server.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

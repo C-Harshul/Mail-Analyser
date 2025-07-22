@@ -1,0 +1,53 @@
+{
+  "name": "mail-analyser-cli",
+  "description": "Gmail and QuickBooks integration CLI tool",
+  "repository": "https://github.com/your-username/mail-analyser",
+  "logo": "https://cdn.jsdelivr.net/npm/simple-icons@v3/icons/heroku.svg",
+  "keywords": ["node", "gmail", "quickbooks", "cli", "oauth"],
+  "env": {
+    "QB_CLIENT_ID": {
+      "description": "QuickBooks Client ID from Intuit Developer Dashboard",
+      "required": true
+    },
+    "QB_CLIENT_SECRET": {
+      "description": "QuickBooks Client Secret from Intuit Developer Dashboard",
+      "required": true
+    },
+    "QB_COMPANY_ID": {
+      "description": "QuickBooks Company ID (Realm ID)",
+      "required": true
+    },
+    "GEMINI_API_KEY": {
+      "description": "Google Gemini API Key for AI processing",
+      "required": true
+    },
+    "VITE_GEMINI_API_KEY": {
+      "description": "Google Gemini API Key for frontend (same as GEMINI_API_KEY)",
+      "required": true
+    },
+    "GOOGLE_CLIENT_ID": {
+      "description": "Google OAuth Client ID for Gmail access",
+      "required": true
+    },
+    "GOOGLE_CLIENT_SECRET": {
+      "description": "Google OAuth Client Secret for Gmail access",
+      "required": true
+    },
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}

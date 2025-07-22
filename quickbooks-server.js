@@ -14,7 +14,7 @@ app.use(express.json({ limit: '5mb' }));
 // Environment variables
 const CLIENT_ID = process.env.QB_CLIENT_ID;
 const CLIENT_SECRET = process.env.QB_CLIENT_SECRET;
-const REDIRECT_URI = process.env.QB_REDIRECT_URI || 'http://localhost:4000/callback';
+const REDIRECT_URI = process.env.QB_REDIRECT_URI || (process.env.NODE_ENV === 'production' ? 'https://your-app.herokuapp.com/callback' : 'http://localhost:4000/callback');
 const COMPANY_ID = process.env.QB_COMPANY_ID || '9341454938935261'; // Replace with your company ID
 
 let access_token = null;
@@ -167,7 +167,7 @@ app.get('/api/gmail/latest', async (req, res) => {
       oAuth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
-        'http://localhost:3000/auth/callback'
+        process.env.NODE_ENV === 'production' ? 'https://your-app.herokuapp.com/auth/callback' : 'http://localhost:3000/auth/callback'
       );
     } else if (fs.existsSync(CREDENTIALS_PATH)) {
       credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH));
@@ -175,7 +175,7 @@ app.get('/api/gmail/latest', async (req, res) => {
       oAuth2Client = new google.auth.OAuth2(
         client_id,
         client_secret,
-        'http://localhost:3000/auth/callback'
+        process.env.NODE_ENV === 'production' ? 'https://your-app.herokuapp.com/auth/callback' : 'http://localhost:3000/auth/callback'
       );
     } else {
       return res.status(401).json({ error: 'No Gmail credentials found.' });
