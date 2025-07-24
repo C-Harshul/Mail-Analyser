@@ -6,3 +6,4 @@ token.json
 .idea/
 dist/
 build/
+.env
